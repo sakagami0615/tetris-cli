@@ -2,9 +2,10 @@ import copy
 from dataclasses import dataclass, field
 from enum import Enum
 
-from tetris_cli.src.color import Color
-from tetris_cli.src.tetrimino import ActiveTetrimino
-from tetris_cli.src.const import BOARD_WIDTH, BOARD_HEIGHT
+from tetris_cli.src.common.color import Color
+
+from tetris_cli.src.tetris.tetrimino import ActiveTetrimino
+from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT
 
 
 BOARD_WALL_COLOR = Color.GRAY.value

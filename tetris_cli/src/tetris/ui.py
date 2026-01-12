@@ -1,9 +1,10 @@
 import copy
 
-from tetris_cli.src import console
-from tetris_cli.src.board import Board, CellType, BOARD_WALL_COLOR
-from tetris_cli.src.tetrimino import ActiveTetrimino
-from tetris_cli.src.const import BOARD_WIDTH, BOARD_HEIGHT, RENDER_ROW_OFFSET
+from tetris_cli.src.common import console
+
+from tetris_cli.src.tetris.board import Board, CellType, BOARD_WALL_COLOR
+from tetris_cli.src.tetris.tetrimino import ActiveTetrimino
+from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT, RENDER_ROW_OFFSET
 
 
 class Render:

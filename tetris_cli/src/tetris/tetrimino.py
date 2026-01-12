@@ -2,7 +2,7 @@ import random
 from enum import Enum
 from dataclasses import dataclass
 
-from tetris_cli.src.color import Color
+from tetris_cli.src.common.color import Color
 
 
 TETRIMINO_COLORS = [

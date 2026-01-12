@@ -1,22 +1,21 @@
 import copy
 
-from tetris_cli.src.board import Board
-from tetris_cli.src.key import KeyManager, KeyState
-from tetris_cli.src.trigger import TimeTrigger
-from tetris_cli.src.tetrimino import ActiveTetrimino
-from tetris_cli.src.ui import Render
-from tetris_cli.src.command import (
+from tetris_cli.src.common.key import KeyManager, KeyState
+from tetris_cli.src.common.trigger import TimeTrigger
+
+from tetris_cli.src.tetris.board import Board
+from tetris_cli.src.tetris.tetrimino import ActiveTetrimino
+from tetris_cli.src.tetris.ui import Render
+from tetris_cli.src.tetris.command import (
     Command, BasicCommand, SpecialCommand,
     RotateCwCommand, RotateCcwCommand, MoveLeftCommand,
     MoveRightCommand, MoveDownCommand, MoveHardDropCommand, HoldCommand
 )
-from tetris_cli.src.const import (
-    HOT_KEY_QUIT, HOT_KEY_MINO_ROTATE_CW, HOT_KEY_MINO_ROTATE_CCW, HOT_KEY_MINO_MOVE_DOWN,
+from tetris_cli.src.tetris.const import (
+    HOT_KEY_MINO_ROTATE_CW, HOT_KEY_MINO_ROTATE_CCW, HOT_KEY_MINO_MOVE_DOWN,
     HOT_KEY_MINO_MOVE_RIGHT, HOT_KEY_MINO_MOVE_LEFT, HOT_KEY_MINO_MOVE_HARD_DROP, HOT_KEY_MINO_HOLD,
-    GAME_LOOP_TRIGGER_TIME, TETRIMINO_DROP_INTERVAL, TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL,
-    KEY_REPEAT_INTERVAL
+    TETRIMINO_DROP_INTERVAL, TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL, KEY_REPEAT_INTERVAL, HOT_KEY_LIST
 )
-from tetris_cli.src import console
 
 
 class Game:
@@ -40,7 +39,7 @@ class Game:
     def _get_input_commands(self) -> list[Command]:
         """キー入力から実行すべきコマンドのリストを取得"""
         commands: list[Command] = []
-        key_manager = KeyManager()
+        key_manager = KeyManager(HOT_KEY_LIST)
 
         # 時計回り回転
         key_rot_cw = key_manager.get_key_input(HOT_KEY_MINO_ROTATE_CW)
@@ -245,38 +244,3 @@ class Game:
         # ゴーストミノを作成
         ghost_mino = self._create_ghost_mino()
         self.render.draw(self.board, self.active_mino, ghost_mino, self.hold_mino, is_cursor_up)
-
-
-class GameManager:
-    """ゲーム全体を管理するマネージャークラス"""
-    game: Game
-    game_loop_trigger: TimeTrigger
-
-    def __init__(self):
-        self.game = Game()
-        self.game_loop_trigger = TimeTrigger(interval=GAME_LOOP_TRIGGER_TIME)
-
-    def __del__(self):
-        # 最終描画（ゴーストミノも作成）
-        ghost_mino = self.game._create_ghost_mino()
-        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, self.game.hold_mino, is_cursor_up=False)
-
-    def _is_quit(self) -> bool:
-        """終了キーが押されたかチェック"""
-        quit_key = KeyManager().get_key_input(HOT_KEY_QUIT)
-        return quit_key.state == KeyState.PRESS
-
-    def game_loop(self) -> None:
-        """ゲームループを実行"""
-        try:
-            while self.game.is_continue:
-                if self.game_loop_trigger.is_trigger():
-                    self.game.update()
-                    self.game.draw()
-                    KeyManager().update()
-
-                if self._is_quit():
-                    break
-        finally:
-            KeyManager().stop()
-            console.clear_input_buffer()

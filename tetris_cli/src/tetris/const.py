@@ -1,7 +1,5 @@
-import sys
 from pynput.keyboard import KeyCode, Key
 
-INF = sys.maxsize
 
 HOT_KEY_QUIT = KeyCode.from_char("q")
 HOT_KEY_MINO_ROTATE_CW = KeyCode.from_char("x")

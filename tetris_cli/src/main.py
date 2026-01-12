@@ -1,5 +1,5 @@
-import tetris_cli.setting  # アプリケーション初期化（colorama等）
-from tetris_cli.src.game import GameManager
+import tetris_cli.setting  # 設定処理実施
+from tetris_cli.src.game_manager import GameManager
 
 
 def main():

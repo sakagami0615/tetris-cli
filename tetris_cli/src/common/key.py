@@ -2,9 +2,8 @@ from enum import Enum
 from typing import TypeAlias
 from pynput import keyboard
 
-from tetris_cli.src.common import Singleton
-from tetris_cli.src.const import INF
-from tetris_cli.src.const import HOT_KEY_LIST
+from tetris_cli.src.common.singleton import Singleton
+from tetris_cli.setting import INF
 
 # 型エイリアス
 KeyType: TypeAlias = keyboard.Key | keyboard.KeyCode
@@ -59,21 +58,21 @@ class KeyInput:
 
 class KeyManager(Singleton):
     """キー入力を管理するシングルトンクラス"""
+    _hot_key_list: list[KeyType]
     _key_input_dict: dict[KeyType, KeyInput]
     _listener: keyboard.Listener
     _initialized: bool = False
 
-    def __new__(cls):
-        instance = super().__new__(cls)
-        if not instance._initialized:
-            instance._key_input_dict = {hot_key: KeyInput(hot_key) for hot_key in HOT_KEY_LIST}
-            instance._listener = keyboard.Listener(
-                on_press=instance._on_press,
-                on_release=instance._on_release
+    def __init__(self, hot_key_list: list[KeyType]):
+        if not self._initialized:
+            self._hot_key_list = hot_key_list
+            self._key_input_dict = {hot_key: KeyInput(hot_key) for hot_key in self._hot_key_list}
+            self._listener = keyboard.Listener(
+                on_press=self._on_press,
+                on_release=self._on_release
             )
-            instance._listener.start()
-            instance._initialized = True
-        return instance
+            self._listener.start()
+            self._initialized = True
 
     def _on_press(self, key: KeyType) -> None:
         """キーが押されたときのコールバック"""
@@ -94,7 +93,7 @@ class KeyManager(Singleton):
 
     def update(self) -> None:
         """全てのキー入力を更新"""
-        for hot_key in HOT_KEY_LIST:
+        for hot_key in self._hot_key_list:
             self._key_input_dict[hot_key].update()
 
     def stop(self) -> None:
