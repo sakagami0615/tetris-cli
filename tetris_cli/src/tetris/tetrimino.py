@@ -155,27 +155,48 @@ class TetriminoSpawner:
 
 class ActiveTetrimino:
     """現在アクティブなテトリミノ"""
-    r: int
-    c: int
-    mino_type: TetriminoDefine
-    rotate: int = 0
-    n_rotate: int = 0
+    _mino_type: TetriminoDefine
+    _r: int
+    _c: int
+    _rotate: int = 0
+    _n_rotate: int = 0
     _spawner: TetriminoSpawner = TetriminoSpawner()
+
+    @property
+    def r(self) -> int: return self._r
+    @property
+    def c(self) -> int: return self._c
+    @property
+    def rotate(self) -> int: return self._rotate
+    @property
+    def n_rotate(self) -> int: return self._n_rotate
+    @property
+    def mino_type(self) -> TetriminoDefine: return self._mino_type
+    @r.setter
+    def r(self, v: int): self._r = v
+    @c.setter
+    def c(self, v: int): self._c = v
+    @rotate.setter
+    def rotate(self, v: int): self._rotate = v
 
     def __init__(self):
         self.spawn()
+    
+    def init_pos(self) -> None:
+        """初期位置にテトリミノを移動"""
+        self._r = TETRIMINO_SPAWN_ROW 
+        self._c = TETRIMINO_SPAWN_COL
+        self._rotate = 0
 
     def spawn(self) -> None:
         """新しいテトリミノをスポーン"""
-        self.mino_type = self._spawner.get_next_tetrimino()
-        self.n_rotate = len(self.mino_type.rotations)
-        self.r = TETRIMINO_SPAWN_ROW 
-        self.c = TETRIMINO_SPAWN_COL
-        self.rotate = 0
+        self._mino_type = self._spawner.get_next_tetrimino()
+        self._n_rotate = len(self._mino_type.rotations)
+        self.init_pos()
 
     def blocks(self) -> list[tuple[int, int]]:
         """現在の回転状態でのブロック座標を取得"""
         return [
-            (self.r + dr, self.c + dc)
-            for dr, dc in self.mino_type.rotations[self.rotate]
+            (self._r + dr, self._c + dc)
+            for dr, dc in self._mino_type.rotations[self._rotate]
         ]

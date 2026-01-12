@@ -185,12 +185,12 @@ class Game:
                 self.is_continue = False
         else:
             # 2回目以降：アクティブなミノとホールドしているミノを入れ替え
-            temp = copy.deepcopy(self.active_mino)
+            temp_mino = copy.deepcopy(self.active_mino)
             self.active_mino = copy.deepcopy(self.hold_mino)
-            self.hold_mino = temp
+            self.hold_mino = temp_mino
 
             # 入れ替えたアクティブミノを初期位置に移動
-            self.active_mino.spawn()
+            self.active_mino.init_pos()
         
         # ホールドフラグを False にする
         self.can_hold = False

@@ -49,8 +49,8 @@ class Render:
         # ホールドミノの最初の回転（rotate=0）のブロック配置を取得
         blocks = hold_mino.mino_type.rotations[0]
 
-        # 中心を(1, 1)として配置（4x4グリッドの中心）
-        center_r, center_c = 1, 1
+        # 中心を(2, 1)として配置（4x4グリッドの中心）
+        center_r, center_c = 2, 1
         for dr, dc in blocks:
             r = center_r + dr
             c = center_c + dc
