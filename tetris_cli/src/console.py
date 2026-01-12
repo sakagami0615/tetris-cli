@@ -3,11 +3,13 @@ import platform
 
 
 def print_color(msg, color=(255, 255, 255), end=None):
+    """カラー出力（coloramaでクロスプラットフォーム対応）"""
     r, g, b = color
     print(f"\033[38;2;{r};{g};{b}m{msg}", end=end)
 
 
 def cursor_up(n):
+    """カーソルを上に移動（coloramaでクロスプラットフォーム対応）"""
     print(f"\033[{n}A", end="")
 
 
