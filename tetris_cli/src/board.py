@@ -1,5 +1,6 @@
 import copy
 from dataclasses import dataclass, field
+from enum import Enum
 
 from tetris_cli.src.color import Color
 from tetris_cli.src.tetrimino import ActiveTetrimino
@@ -9,12 +10,28 @@ from tetris_cli.src.const import BOARD_WIDTH, BOARD_HEIGHT
 BOARD_WALL_COLOR = Color.GRAY.value
 
 
+class CellType(Enum):
+    EMPTY: int = 0
+    WALL: int = 1
+    GHOST: int = 2
+    MINO: int = 3
+
+
 @dataclass
 class Cell:
     """ボードの1セルを表すデータクラス"""
-    wall: bool = False
-    fill: bool = False
+    cell_type: CellType = CellType.EMPTY
     color: tuple[int, int, int] = field(default_factory=lambda: (0, 0, 0))
+
+    @property
+    def wall(self) -> bool:
+        """壁かどうか"""
+        return self.cell_type == CellType.WALL
+
+    @property
+    def fill(self) -> bool:
+        """埋まっているかどうか（壁またはミノ）"""
+        return self.cell_type in (CellType.WALL, CellType.MINO, CellType.GHOST)
 
 
 class Board:
@@ -23,17 +40,12 @@ class Board:
     @staticmethod
     def _create_wall_cell() -> Cell:
         """壁セルを作成"""
-        return Cell(wall=True, fill=True, color=BOARD_WALL_COLOR)
-
-    @staticmethod
-    def _create_empty_cell() -> Cell:
-        """空セルを作成"""
-        return Cell()
+        return Cell(cell_type=CellType.WALL, color=BOARD_WALL_COLOR)
 
     def _create_cells(self) -> list[list[Cell]]:
         """ボードのセルを初期化（壁を含む）"""
         cells = [
-            [self._create_empty_cell() for _ in range(BOARD_WIDTH + 2)]
+            [Cell(cell_type=CellType.EMPTY) for _ in range(BOARD_WIDTH + 2)]
             for _ in range(BOARD_HEIGHT + 2)
         ]
 
@@ -52,8 +64,9 @@ class Board:
         self.cells = self._create_cells()
     
     def write_tetrimino(self, active_mino: ActiveTetrimino) -> None:
+        """テトリミノをボードに書き込む"""
         for r, c in active_mino.blocks():
-            self.cells[r][c].fill = True
+            self.cells[r][c].cell_type = CellType.MINO
             self.cells[r][c].color = active_mino.mino_type.color
 
     def _is_fill_line(self, row: int) -> bool:

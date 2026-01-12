@@ -1,7 +1,7 @@
 import copy
 
 from tetris_cli.src import console
-from tetris_cli.src.board import Board
+from tetris_cli.src.board import Board, CellType
 from tetris_cli.src.tetrimino import ActiveTetrimino
 from tetris_cli.src.const import BOARD_WIDTH, BOARD_HEIGHT, RENDER_ROW_OFFSET
 
@@ -12,7 +12,7 @@ class Render:
     def _overlay_active_mino(self, cells: list[list], active_mino: ActiveTetrimino) -> None:
         """アクティブなテトリミノをセルに重ね合わせる"""
         for r, c in active_mino.blocks():
-            cells[r][c].fill = True
+            cells[r][c].cell_type = CellType.MINO
             cells[r][c].color = active_mino.mino_type.color
 
     def _draw_cell(self, cell) -> None:
