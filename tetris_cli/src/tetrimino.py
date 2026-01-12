@@ -89,23 +89,41 @@ class TetriminoType(Enum):
     )
 
 
-def get_tetrimino_type(mino_index: int) -> TetriminoDefine:
-    """インデックスからテトリミノタイプを取得"""
-    
-    # テトリミノタイプのリスト（インデックスでアクセス）
-    _TETRIMINO_TYPE_LIST = [
-        TetriminoType.MINO_O,
-        TetriminoType.MINO_I,
-        TetriminoType.MINO_L,
-        TetriminoType.MINO_J,
-        TetriminoType.MINO_S,
-        TetriminoType.MINO_Z,
-        TetriminoType.MINO_T,
-    ]
+class TetriminoSpawner:
+    """テトリミノのスポーン順序を管理するクラス
 
-    if not 0 <= mino_index < N_TETRIMINO:
-        raise IndexError(f"mino_index {mino_index} is out of range [0, {N_TETRIMINO})")
-    return _TETRIMINO_TYPE_LIST[mino_index].value
+    7種類のテトリミノをランダムな順序で出現させる。
+    全7種類が出現したら再度シャッフルして繰り返す（7-bag方式）。
+    """
+    _type_list: list[TetriminoDefine]
+
+    _curr_index: int
+    _n_type: int
+
+    def __init__(self):
+        self._type_list = [
+            TetriminoType.MINO_O,
+            TetriminoType.MINO_I,
+            TetriminoType.MINO_L,
+            TetriminoType.MINO_J,
+            TetriminoType.MINO_S,
+            TetriminoType.MINO_Z,
+            TetriminoType.MINO_T,
+        ]
+        self._curr_index = -1
+        self._n_type = len(self._type_list)
+
+    def get_next_tetrimino(self) -> TetriminoDefine:
+        """次のテトリミノタイプを取得
+
+        7種類全てが出現したら、リストをシャッフルして新しいサイクルを開始する。
+        """
+        # テトリミノの出現順をシャッフル
+        self._curr_index = (self._curr_index + 1) % self._n_type
+        if self._curr_index == 0:
+            random.shuffle(self._type_list)
+        return self._type_list[self._curr_index].value
+
 
 
 @dataclass
@@ -116,6 +134,7 @@ class ActiveTetrimino:
     mino_type: TetriminoDefine = None
     rotate: int = 0
     n_rotate: int = 0
+    _spawner: TetriminoSpawner = TetriminoSpawner()
 
     def __post_init__(self):
         """初期化後にテトリミノをスポーン"""
@@ -124,8 +143,7 @@ class ActiveTetrimino:
 
     def spawn(self, init_r: int, init_c: int) -> None:
         """新しいテトリミノをスポーン"""
-        mino_index = random.randrange(N_TETRIMINO)
-        self.mino_type = get_tetrimino_type(mino_index)
+        self.mino_type = self._spawner.get_next_tetrimino()
         self.n_rotate = len(self.mino_type.rotations)
         self.r = init_r
         self.c = init_c
