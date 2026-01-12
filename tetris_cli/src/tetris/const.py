@@ -1,0 +1,42 @@
+from pynput.keyboard import KeyCode, Key
+
+
+HOT_KEY_QUIT = KeyCode.from_char("q")
+HOT_KEY_MINO_ROTATE_CW = KeyCode.from_char("x")
+HOT_KEY_MINO_ROTATE_CCW = KeyCode.from_char("z")
+HOT_KEY_MINO_MOVE_DOWN = Key.down
+HOT_KEY_MINO_MOVE_RIGHT = Key.right
+HOT_KEY_MINO_MOVE_LEFT = Key.left
+HOT_KEY_MINO_MOVE_HARD_DROP = Key.up
+HOT_KEY_MINO_HOLD = Key.shift_l
+
+HOT_KEY_LIST = [
+    HOT_KEY_QUIT,
+    HOT_KEY_MINO_ROTATE_CW,
+    HOT_KEY_MINO_ROTATE_CCW,
+    HOT_KEY_MINO_MOVE_DOWN,
+    HOT_KEY_MINO_MOVE_RIGHT,
+    HOT_KEY_MINO_MOVE_LEFT,
+    HOT_KEY_MINO_MOVE_HARD_DROP,
+    HOT_KEY_MINO_HOLD,
+]
+
+# ボード設定
+BOARD_WIDTH = 10
+BOARD_HEIGHT = 20
+
+# ゲームループ設定
+GAME_LOOP_TRIGGER_TIME = 0.07
+
+# テトリミノの落下速度
+TETRIMINO_DROP_INTERVAL = 0.5
+
+# テトリミノの初期位置
+TETRIMINO_SPAWN_ROW = 1
+TETRIMINO_SPAWN_COL = 5
+
+# キー入力の反復間隔（フレーム数）
+KEY_REPEAT_INTERVAL = 2
+
+# 描画の行オフセット（壁を考慮）
+RENDER_ROW_OFFSET = 1

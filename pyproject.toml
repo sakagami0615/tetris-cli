@@ -1,0 +1,27 @@
+[project]
+name = "tetris-cli"
+packages = [
+    {include = "tetris_cli"}
+]
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "sakagami0615",email = "sakagami0615@gmail.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pynput>=1.7.0,<2.0.0",
+    "colorama>=0.4.6,<1.0.0"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+pytest-cov = "^7.0.0"
+
