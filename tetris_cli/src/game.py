@@ -1,3 +1,5 @@
+import copy
+
 from tetris_cli.src.board import Board
 from tetris_cli.src.key import KeyManager, KeyState
 from tetris_cli.src.trigger import TimeTrigger
@@ -107,6 +109,32 @@ class Game:
 
         return True
 
+    def _create_ghost_mino(self) -> ActiveTetrimino | None:
+        """ゴースト（落下予測位置）のテトリミノを作成"""
+        if not self.active_mino:
+            return None
+
+        # アクティブミノの深いコピーを作成
+        ghost_mino = copy.deepcopy(self.active_mino)
+
+        # 着地するまで下に移動
+        while True:
+            ghost_mino.r += 1
+
+            # 衝突チェック（一時的にactive_minoを置き換えて判定）
+            original_r = self.active_mino.r
+            self.active_mino.r = ghost_mino.r
+
+            if not self._is_valid_position(self.active_mino):
+                # 衝突したら1マス戻す
+                ghost_mino.r -= 1
+                self.active_mino.r = original_r
+                break
+
+            self.active_mino.r = original_r
+
+        return ghost_mino
+
     def _execute_hard_drop(self) -> None:
         """ハードドロップを実行（着地するまで一気に落下）"""
         while True:
@@ -174,7 +202,9 @@ class Game:
 
     def draw(self, is_cursor_up: bool = True):
         """画面を描画する"""
-        self.render.draw(self.board, self.active_mino, is_cursor_up)
+        # ゴーストミノを作成
+        ghost_mino = self._create_ghost_mino()
+        self.render.draw(self.board, self.active_mino, ghost_mino, is_cursor_up)
 
 
 class GameManager:
@@ -187,7 +217,9 @@ class GameManager:
         self.game_loop_trigger = TimeTrigger(interval=GAME_LOOP_TRIGGER_TIME)
 
     def __del__(self):
-        self.game.draw(is_cursor_up=False)
+        # 最終描画（ゴーストミノも作成）
+        ghost_mino = self.game._create_ghost_mino()
+        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, is_cursor_up=False)
 
     def _is_quit(self) -> bool:
         """終了キーが押されたかチェック"""
