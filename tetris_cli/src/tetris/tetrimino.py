@@ -3,6 +3,7 @@ from enum import Enum
 from dataclasses import dataclass
 
 from tetris_cli.src.common.color import Color
+from tetris_cli.src.tetris.const import TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL
 
 
 TETRIMINO_COLORS = [
@@ -33,12 +34,19 @@ class TetriminoDefine:
 
 
 class TetriminoType(Enum):
+    """
+    ■ ■ 
+    □ ■ 
+    """
     MINO_O = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 1,  0), ( 1,  1), ( 0,  1)],
+            [( 0,  0), (-1,  0), (-1,  1), ( 0,  1)],
         ],
         color = TETRIMINO_COLORS[MINO_O_INDEX],
     )
+    """
+    ■ □ ■ ■
+    """
     MINO_I = TetriminoDefine(
         rotations = [
             [( 0,  0), ( 0, -1), ( 0,  1), ( 0,  2)],
@@ -46,44 +54,64 @@ class TetriminoType(Enum):
         ],
         color = TETRIMINO_COLORS[MINO_I_INDEX],
     )
+    """
+        ■
+    ■ □ ■
+    """
     MINO_L = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 0, -1), ( 0,  1), ( 1,  1)],
-            [( 0,  0), (-1,  0), ( 1,  0), ( 1, -1)],
             [( 0,  0), (-1, -1), ( 0, -1), ( 0,  1)],
             [( 0,  0), (-1,  0), ( 1,  0), (-1,  1)],
+            [( 0,  0), ( 0, -1), ( 0,  1), ( 1,  1)],
+            [( 0,  0), (-1,  0), ( 1,  0), ( 1, -1)],
         ],
         color = TETRIMINO_COLORS[MINO_L_INDEX],
     )
+    """
+    ■
+    ■ □ ■
+    """
     MINO_J = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 0, -1), ( 0,  1), ( 1, -1)],
-            [( 0,  0), (-1,  0), (-1, -1), ( 1,  0)],
             [( 0,  0), (-1,  1), ( 0, -1), ( 0,  1)],
             [( 0,  0), (-1,  0), ( 1,  0), ( 1,  1)],
+            [( 0,  0), ( 0, -1), ( 0,  1), ( 1, -1)],
+            [( 0,  0), (-1,  0), (-1, -1), ( 1,  0)],
         ],
         color = TETRIMINO_COLORS[MINO_J_INDEX],
     )
+    """
+      ■ ■
+    ■ □
+    """
     MINO_S = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 0,  1), ( 1, -1), ( 1,  0)],
+            [( 0,  0), ( 0, -1), (-1,  0), (-1,  1)],
             [( 0,  0), (-1,  0), ( 0,  1), ( 1,  1)],
         ],
         color = TETRIMINO_COLORS[MINO_S_INDEX],
     )
+    """
+    ■ ■
+      □ ■
+    """
     MINO_Z = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 0, -1), ( 1,  0), ( 1,  1)],
-            [( 0,  0), (-1,  1), ( 0,  1), ( 1,  0)],
+            [( 0,  0), ( 0,  1), (-1,  0), (-1, -1)],
+            [( 0,  0), ( 1,  0), ( 0,  1), (-1,  1)],
         ],
         color = TETRIMINO_COLORS[MINO_Z_INDEX],
     )
+    """
+      ■
+    ■ □ ■
+    """
     MINO_T = TetriminoDefine(
         rotations = [
-            [( 0,  0), ( 0, -1), ( 0,  1), ( 1,  0)],
-            [( 0,  0), (-1,  0), ( 0, -1), ( 1,  0)],
             [( 0,  0), (-1,  0), ( 0, -1), ( 0,  1)],
             [( 0,  0), (-1,  0), ( 0,  1), ( 1,  0)],
+            [( 0,  0), ( 0, -1), ( 0,  1), ( 1,  0)],
+            [( 0,  0), (-1,  0), ( 0, -1), ( 1,  0)],
         ],
         color = TETRIMINO_COLORS[MINO_T_INDEX],
     )
@@ -120,33 +148,29 @@ class TetriminoSpawner:
         """
         # テトリミノの出現順をシャッフル
         self._curr_index = (self._curr_index + 1) % self._n_type
-        if self._curr_index == 0:
-            random.shuffle(self._type_list)
+        #if self._curr_index == 0:
+        #    random.shuffle(self._type_list)
         return self._type_list[self._curr_index].value
 
 
-
-@dataclass
 class ActiveTetrimino:
     """現在アクティブなテトリミノ"""
     r: int
     c: int
-    mino_type: TetriminoDefine = None
+    mino_type: TetriminoDefine
     rotate: int = 0
     n_rotate: int = 0
     _spawner: TetriminoSpawner = TetriminoSpawner()
 
-    def __post_init__(self):
-        """初期化後にテトリミノをスポーン"""
-        if self.mino_type is None:
-            self.spawn(self.r, self.c)
+    def __init__(self):
+        self.spawn()
 
-    def spawn(self, init_r: int, init_c: int) -> None:
+    def spawn(self) -> None:
         """新しいテトリミノをスポーン"""
         self.mino_type = self._spawner.get_next_tetrimino()
         self.n_rotate = len(self.mino_type.rotations)
-        self.r = init_r
-        self.c = init_c
+        self.r = TETRIMINO_SPAWN_ROW 
+        self.c = TETRIMINO_SPAWN_COL
         self.rotate = 0
 
     def blocks(self) -> list[tuple[int, int]]:

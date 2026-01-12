@@ -14,7 +14,7 @@ from tetris_cli.src.tetris.command import (
 from tetris_cli.src.tetris.const import (
     HOT_KEY_MINO_ROTATE_CW, HOT_KEY_MINO_ROTATE_CCW, HOT_KEY_MINO_MOVE_DOWN,
     HOT_KEY_MINO_MOVE_RIGHT, HOT_KEY_MINO_MOVE_LEFT, HOT_KEY_MINO_MOVE_HARD_DROP, HOT_KEY_MINO_HOLD,
-    TETRIMINO_DROP_INTERVAL, TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL, KEY_REPEAT_INTERVAL, HOT_KEY_LIST
+    TETRIMINO_DROP_INTERVAL, KEY_REPEAT_INTERVAL, HOT_KEY_LIST
 )
 
 
@@ -31,7 +31,7 @@ class Game:
     def __init__(self):
         self.render = Render()
         self.board = Board()
-        self.active_mino = ActiveTetrimino(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+        self.active_mino = ActiveTetrimino()
         self.hold_mino = None
         self.can_hold = True
         self.down_mino_trigger = TimeTrigger(interval=TETRIMINO_DROP_INTERVAL)
@@ -89,7 +89,7 @@ class Game:
 
     def _spawn_tetrimino(self) -> None:
         """新しいテトリミノをスポーン"""
-        self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+        self.active_mino.spawn()
 
         # 新しいテトリミノでホールド可能にする
         self.can_hold = True
@@ -172,7 +172,7 @@ class Game:
             # 初回ホールド：アクティブなミノをホールドし、新しいミノをスポーン
             self.hold_mino = copy.deepcopy(self.active_mino)
             # 新しいミノをスポーン（_spawn_tetrimino を使わずに直接処理）
-            self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+            self.active_mino.spawn()
             if not self._is_valid_position(self.active_mino):
                 self.active_mino = None
                 self.is_continue = False
@@ -183,7 +183,7 @@ class Game:
             self.hold_mino = temp
 
             # 入れ替えたアクティブミノを初期位置に移動
-            self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+            self.active_mino.spawn()
         
         # ホールドフラグを False にする
         self.can_hold = False
