@@ -1,43 +1,51 @@
 import copy
+from dataclasses import dataclass, field
 
 from tetris_cli.src.color import Color
 from tetris_cli.src.tetrimino import ActiveTetrimino
 from tetris_cli.src.const import BOARD_WIDTH, BOARD_HEIGHT
 
 
-BOARD_WALL = -2
-BOARD_EMPTY = -1
-
 BOARD_WALL_COLOR = Color.GRAY.value
 
 
+@dataclass
 class Cell:
+    """ボードの1セルを表すデータクラス"""
     wall: bool = False
     fill: bool = False
-    color: tuple[int, int, int] = (0, 0, 0)
+    color: tuple[int, int, int] = field(default_factory=lambda: (0, 0, 0))
 
 
 class Board:
     cells: list[list[Cell]]
 
-    def _create_cells(self) -> list[list[Cell]]:
-        cells: list[list[Cell]] = []
-        for r in range(BOARD_HEIGHT + 2):
-            cells.append([])
-            for c in range(BOARD_WIDTH + 2):
-                cells[-1].append(Cell())
+    @staticmethod
+    def _create_wall_cell() -> Cell:
+        """壁セルを作成"""
+        return Cell(wall=True, fill=True, color=BOARD_WALL_COLOR)
 
+    @staticmethod
+    def _create_empty_cell() -> Cell:
+        """空セルを作成"""
+        return Cell()
+
+    def _create_cells(self) -> list[list[Cell]]:
+        """ボードのセルを初期化（壁を含む）"""
+        cells = [
+            [self._create_empty_cell() for _ in range(BOARD_WIDTH + 2)]
+            for _ in range(BOARD_HEIGHT + 2)
+        ]
+
+        # 左右の壁
         for r in range(BOARD_HEIGHT + 2):
-            cells[r][0].wall = True
-            cells[r][0].fill = True
-            cells[r][0].color = BOARD_WALL_COLOR
-            cells[r][-1].wall = True
-            cells[r][-1].fill = True
-            cells[r][-1].color = BOARD_WALL_COLOR
+            cells[r][0] = self._create_wall_cell()
+            cells[r][-1] = self._create_wall_cell()
+
+        # 下の壁
         for c in range(BOARD_WIDTH + 2):
-            cells[-1][c].wall = True
-            cells[-1][c].fill = True
-            cells[-1][c].color = BOARD_WALL_COLOR
+            cells[-1][c] = self._create_wall_cell()
+
         return cells
 
     def __init__(self):
@@ -48,22 +56,28 @@ class Board:
             self.cells[r][c].fill = True
             self.cells[r][c].color = active_mino.mino_type.color
 
-    def clear_fill_lines(self) -> None:
-        def is_fill_line(row):
+    def _is_fill_line(self, row: int) -> bool:
+        """指定行が埋まっているかチェック"""
+        for c in range(1, BOARD_WIDTH + 1):
+            cell = self.cells[row][c]
+            if not cell.fill or cell.wall:
+                return False
+        return True
+
+    def _drop_lines(self, row: int) -> None:
+        """指定行以上のラインを1つ下に落とす"""
+        for r in range(row, 0, -1):
             for c in range(1, BOARD_WIDTH + 1):
-                cell = self.cells[row][c]
-                if not cell.fill or cell.wall:
-                    return False
-            return True
-        
-        def drop_lines(row):
-            for r in range(row, 0, -1):
-                for c in range(1, BOARD_WIDTH + 1):
-                    self.cells[r][c] = copy.deepcopy(self.cells[r - 1][c])
-        
+                self.cells[r][c] = copy.deepcopy(self.cells[r - 1][c])
+
+    def clear_fill_lines(self) -> int:
+        """埋まった行をクリアして、クリアした行数を返す"""
+        cleared_lines = 0
         row = BOARD_HEIGHT + 1
         while row > 0:
-            if is_fill_line(row):
-                drop_lines(row)
+            if self._is_fill_line(row):
+                self._drop_lines(row)
+                cleared_lines += 1
             else:
                 row -= 1
+        return cleared_lines

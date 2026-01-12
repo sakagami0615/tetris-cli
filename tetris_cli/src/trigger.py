@@ -1,17 +1,21 @@
 import time
+from dataclasses import dataclass, field
 
 
+@dataclass
 class TimeTrigger:
-    last_unix_time: float = time.time()
-    unix_time_interval: float
-
-    def __init__(self, unix_time_interval: float):
-        self.unix_time_interval = unix_time_interval
+    """時間ベースのトリガークラス"""
+    interval: float
+    _last_time: float = field(default_factory=time.time, init=False)
 
     def is_trigger(self) -> bool:
-        curr_unix_time: float = time.time()
-        if curr_unix_time - self.last_unix_time >= self.unix_time_interval:
-            self.last_unix_time = curr_unix_time
+        """指定間隔が経過したかチェック"""
+        current_time = time.time()
+        if current_time - self._last_time >= self.interval:
+            self._last_time = current_time
             return True
-        else:
-            return False
+        return False
+
+    def reset(self) -> None:
+        """トリガーをリセット"""
+        self._last_time = time.time()

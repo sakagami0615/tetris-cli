@@ -12,30 +12,40 @@ class KeyState(Enum):
 
 
 class KeyInput:
+    """個別キーの状態を管理"""
     _state: KeyState = KeyState.HOLD
     _elapsed: int = INF
     _key: str
 
     @property
-    def state(self):
+    def state(self) -> KeyState:
         return self._state
-    
+
     @property
-    def elapsed(self):
+    def elapsed(self) -> int:
         return self._elapsed
 
     def __init__(self, key: str):
         self._key = key
-    
-    def update(self):
+
+    def _transition_to_press(self) -> None:
+        """HOLD → PRESS への状態遷移"""
+        self._state = KeyState.PRESS
+        self._elapsed = 0
+
+    def _transition_to_hold(self) -> None:
+        """PRESS → HOLD への状態遷移"""
+        self._state = KeyState.HOLD
+        self._elapsed = 0
+
+    def update(self) -> None:
+        """キー状態を更新"""
         is_pressed = keyboard.is_pressed(self._key)
-        
-        if (self._state == KeyState.HOLD) and is_pressed:
-            self._state = KeyState.PRESS
-            self._elapsed = 0
-        elif (self._state == KeyState.PRESS) and (not is_pressed):
-            self._state = KeyState.HOLD
-            self._elapsed = 0
+
+        if self._state == KeyState.HOLD and is_pressed:
+            self._transition_to_press()
+        elif self._state == KeyState.PRESS and not is_pressed:
+            self._transition_to_hold()
         else:
             self._elapsed += 1
 

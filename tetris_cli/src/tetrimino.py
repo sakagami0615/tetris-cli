@@ -88,36 +88,42 @@ class TetriminoType(Enum):
         color = TETRIMINO_COLORS[MINO_T_INDEX],
     )
 
-def get_tetrimino_type(mino_index: int) -> TetriminoDefine:    
-    if mino_index == MINO_O_INDEX:
-        return TetriminoType.MINO_O.value
-    elif mino_index == MINO_I_INDEX:
-        return TetriminoType.MINO_I.value
-    elif mino_index == MINO_L_INDEX:
-        return TetriminoType.MINO_L.value
-    elif mino_index == MINO_J_INDEX:
-        return TetriminoType.MINO_J.value
-    elif mino_index == MINO_S_INDEX:
-        return TetriminoType.MINO_S.value
-    elif mino_index == MINO_Z_INDEX:
-        return TetriminoType.MINO_Z.value
-    elif mino_index == MINO_T_INDEX:
-        return TetriminoType.MINO_T.value
-    else:
-        raise IndexError("mino_index is out of range")
+
+def get_tetrimino_type(mino_index: int) -> TetriminoDefine:
+    """インデックスからテトリミノタイプを取得"""
+    
+    # テトリミノタイプのリスト（インデックスでアクセス）
+    _TETRIMINO_TYPE_LIST = [
+        TetriminoType.MINO_O,
+        TetriminoType.MINO_I,
+        TetriminoType.MINO_L,
+        TetriminoType.MINO_J,
+        TetriminoType.MINO_S,
+        TetriminoType.MINO_Z,
+        TetriminoType.MINO_T,
+    ]
+
+    if not 0 <= mino_index < N_TETRIMINO:
+        raise IndexError(f"mino_index {mino_index} is out of range [0, {N_TETRIMINO})")
+    return _TETRIMINO_TYPE_LIST[mino_index].value
 
 
+@dataclass
 class ActiveTetrimino:
-    mino_type: TetriminoDefine
-    n_rotate: int
-    rotate: int
+    """現在アクティブなテトリミノ"""
     r: int
     c: int
+    mino_type: TetriminoDefine = None
+    rotate: int = 0
+    n_rotate: int = 0
 
-    def __init__(self, init_r: int, init_c: int):
-        self.spawn(init_r, init_c)
+    def __post_init__(self):
+        """初期化後にテトリミノをスポーン"""
+        if self.mino_type is None:
+            self.spawn(self.r, self.c)
 
     def spawn(self, init_r: int, init_c: int) -> None:
+        """新しいテトリミノをスポーン"""
         mino_index = random.randrange(N_TETRIMINO)
         self.mino_type = get_tetrimino_type(mino_index)
         self.n_rotate = len(self.mino_type.rotations)
@@ -126,6 +132,7 @@ class ActiveTetrimino:
         self.rotate = 0
 
     def blocks(self) -> list[tuple[int, int]]:
+        """現在の回転状態でのブロック座標を取得"""
         return [
             (self.r + dr, self.c + dc)
             for dr, dc in self.mino_type.rotations[self.rotate]
