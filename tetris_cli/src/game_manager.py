@@ -20,7 +20,7 @@ class GameManager:
     def __del__(self):
         # 最終描画（ゴーストミノも作成）
         ghost_mino = self.game._create_ghost_mino()
-        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, self.game.hold_mino, is_cursor_up=False)
+        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, self.game.hold_mino, self.game.score, is_cursor_up=False)
 
     def _is_quit(self) -> bool:
         """終了キーが押されたかチェック"""

@@ -59,7 +59,7 @@ class Render:
 
         return grid
 
-    def _draw_field(self, cells: list[list], hold_mino: ActiveTetrimino | None) -> None:
+    def _draw_field(self, cells: list[list], hold_mino: ActiveTetrimino | None, score: int) -> None:
         """ボード全体を描画（ホールド情報を右側に表示）"""
         # タイトル行を描画
         console.print_color("←→:move,xz:rot")
@@ -100,10 +100,9 @@ class Render:
 
             console.print_color("")
             row_index += 1
-        score = 0
         console.print_color(f"score: {score}")
 
-    def draw(self, board: Board, active_mino: ActiveTetrimino | None, ghost_mino: ActiveTetrimino | None, hold_mino: ActiveTetrimino | None, is_cursor_up: bool = True) -> None:
+    def draw(self, board: Board, active_mino: ActiveTetrimino | None, ghost_mino: ActiveTetrimino | None, hold_mino: ActiveTetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
         """ゲーム画面を描画"""
         # ボードのコピーを作成
         cells = copy.deepcopy(board.cells)
@@ -117,7 +116,7 @@ class Render:
             self._overlay_active_mino(cells, active_mino)
 
         # 描画
-        self._draw_field(cells, hold_mino)
+        self._draw_field(cells, hold_mino, score)
 
         # カーソルを上に戻す（タイトル行 + ボード行）
         if is_cursor_up:

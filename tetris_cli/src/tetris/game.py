@@ -17,7 +17,6 @@ from tetris_cli.src.tetris.const import (
     TETRIMINO_DROP_INTERVAL, KEY_REPEAT_INTERVAL, HOT_KEY_LIST
 )
 
-
 class Game:
     """ゲームのメインロジックを管理"""
     is_continue: bool = True
@@ -27,6 +26,7 @@ class Game:
     active_mino: ActiveTetrimino | None
     hold_mino: ActiveTetrimino | None
     can_hold: bool
+    score: int
 
     def __init__(self):
         self.render = Render()
@@ -35,6 +35,7 @@ class Game:
         self.hold_mino = None
         self.can_hold = True
         self.down_mino_trigger = TimeTrigger(interval=TETRIMINO_DROP_INTERVAL)
+        self.score = 0
 
     def _get_input_commands(self) -> list[Command]:
         """キー入力から実行すべきコマンドのリストを取得"""
@@ -98,6 +99,17 @@ class Game:
             self.active_mino = None
             self.is_continue = False
 
+    def _add_score(self, lines: int) -> None:
+        """消去したライン数に基づいてスコアを加算"""
+        if lines == 1:
+            self.score += 100
+        elif lines == 2:
+            self.score += 300
+        elif lines == 3:
+            self.score += 500
+        elif lines == 4:
+            self.score += 800
+
     def _apply_command(self, command: BasicCommand) -> bool:
         """基本コマンドを1つ適用し、成功したかどうかを返す"""
         # 現在の状態を保存
@@ -158,7 +170,8 @@ class Game:
                 # 衝突したら1マス戻して固定
                 self.active_mino.r -= 1
                 self.board.write_tetrimino(self.active_mino)
-                self.board.clear_fill_lines()
+                cleared_lines = self.board.clear_fill_lines()
+                self._add_score(cleared_lines)
                 self._spawn_tetrimino()
                 break
 
@@ -231,7 +244,8 @@ class Game:
             if not self._apply_command(down_command):
                 # 下移動で衝突した場合は固定
                 self.board.write_tetrimino(self.active_mino)
-                self.board.clear_fill_lines()
+                cleared_lines = self.board.clear_fill_lines()
+                self._add_score(cleared_lines)
                 self._spawn_tetrimino()
 
     def update(self) -> None:
@@ -243,4 +257,4 @@ class Game:
         """画面を描画する"""
         # ゴーストミノを作成
         ghost_mino = self._create_ghost_mino()
-        self.render.draw(self.board, self.active_mino, ghost_mino, self.hold_mino, is_cursor_up)
+        self.render.draw(self.board, self.active_mino, ghost_mino, self.hold_mino, self.score, is_cursor_up)
