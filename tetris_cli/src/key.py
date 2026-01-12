@@ -85,9 +85,12 @@ class KeyManager(Singleton):
         if key in self._key_input_dict:
             self._key_input_dict[key].set_pressed(False)
 
-    def get_key_input(self, hot_key: KeyType) -> KeyInput | None:
+    def get_key_input(self, hot_key: KeyType) -> KeyInput:
         """指定されたキーの入力状態を取得"""
-        return self._key_input_dict.get(hot_key, None)
+        if hot_key in self._key_input_dict:
+            return self._key_input_dict[hot_key]
+        else:
+            raise KeyError(f"'{hot_key}' key is not in self._key_input_dict")
 
     def update(self) -> None:
         """全てのキー入力を更新"""

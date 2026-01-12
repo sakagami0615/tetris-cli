@@ -1,20 +1,24 @@
 import sys
-from pynput import keyboard
+from pynput.keyboard import KeyCode, Key
 
 INF = sys.maxsize
 
-HOT_KEY_QUIT = keyboard.KeyCode.from_char("q")
-HOT_KEY_MINO_ROTATE_CW = keyboard.Key.up
-HOT_KEY_MINO_MOVE_DOWN = keyboard.Key.down
-HOT_KEY_MINO_MOVE_RIGHT = keyboard.Key.right
-HOT_KEY_MINO_MOVE_LEFT = keyboard.Key.left
+HOT_KEY_QUIT = KeyCode.from_char("q")
+HOT_KEY_MINO_ROTATE_CW = KeyCode.from_char("x")
+HOT_KEY_MINO_ROTATE_CCW = KeyCode.from_char("z")
+HOT_KEY_MINO_MOVE_DOWN = Key.down
+HOT_KEY_MINO_MOVE_RIGHT = Key.right
+HOT_KEY_MINO_MOVE_LEFT = Key.left
+HOT_KEY_MINO_MOVE_HARD_DROP = Key.up
 
 HOT_KEY_LIST = [
     HOT_KEY_QUIT,
     HOT_KEY_MINO_ROTATE_CW,
+    HOT_KEY_MINO_ROTATE_CCW,
     HOT_KEY_MINO_MOVE_DOWN,
     HOT_KEY_MINO_MOVE_RIGHT,
     HOT_KEY_MINO_MOVE_LEFT,
+    HOT_KEY_MINO_MOVE_HARD_DROP,
 ]
 
 # ボード設定
