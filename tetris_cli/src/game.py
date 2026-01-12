@@ -13,6 +13,7 @@ from tetris_cli.src.const import (
     TETRIMINO_DROP_INTERVAL, TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL,
     KEY_REPEAT_INTERVAL
 )
+from tetris_cli.src import console
 
 
 class Game:
@@ -151,11 +152,15 @@ class GameManager:
 
     def game_loop(self) -> None:
         """ゲームループを実行"""
-        while self.game.is_continue:
-            if self.game_loop_trigger.is_trigger():
-                self.game.update()
-                self.game.draw()
-                KeyManager().update()
+        try:
+            while self.game.is_continue:
+                if self.game_loop_trigger.is_trigger():
+                    self.game.update()
+                    self.game.draw()
+                    KeyManager().update()
 
-            if self._is_quit():
-                break
+                if self._is_quit():
+                    break
+        finally:
+            KeyManager().stop()
+            console.clear_input_buffer()

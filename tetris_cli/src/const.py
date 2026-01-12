@@ -1,12 +1,13 @@
 import sys
+from pynput import keyboard
 
 INF = sys.maxsize
 
-HOT_KEY_QUIT = "q"
-HOT_KEY_MINO_ROTATE_CW = "up"
-HOT_KEY_MINO_MOVE_DOWN = "down"
-HOT_KEY_MINO_MOVE_RIGHT = "right"
-HOT_KEY_MINO_MOVE_LEFT = "left"
+HOT_KEY_QUIT = keyboard.KeyCode.from_char("q")
+HOT_KEY_MINO_ROTATE_CW = keyboard.Key.up
+HOT_KEY_MINO_MOVE_DOWN = keyboard.Key.down
+HOT_KEY_MINO_MOVE_RIGHT = keyboard.Key.right
+HOT_KEY_MINO_MOVE_LEFT = keyboard.Key.left
 
 HOT_KEY_LIST = [
     HOT_KEY_QUIT,
