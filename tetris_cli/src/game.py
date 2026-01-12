@@ -8,11 +8,11 @@ from tetris_cli.src.ui import Render
 from tetris_cli.src.command import (
     Command, BasicCommand, SpecialCommand,
     RotateCwCommand, RotateCcwCommand, MoveLeftCommand,
-    MoveRightCommand, MoveDownCommand, MoveHardDropCommand
+    MoveRightCommand, MoveDownCommand, MoveHardDropCommand, HoldCommand
 )
 from tetris_cli.src.const import (
     HOT_KEY_QUIT, HOT_KEY_MINO_ROTATE_CW, HOT_KEY_MINO_ROTATE_CCW, HOT_KEY_MINO_MOVE_DOWN,
-    HOT_KEY_MINO_MOVE_RIGHT, HOT_KEY_MINO_MOVE_LEFT, HOT_KEY_MINO_MOVE_HARD_DROP,
+    HOT_KEY_MINO_MOVE_RIGHT, HOT_KEY_MINO_MOVE_LEFT, HOT_KEY_MINO_MOVE_HARD_DROP, HOT_KEY_MINO_HOLD,
     GAME_LOOP_TRIGGER_TIME, TETRIMINO_DROP_INTERVAL, TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL,
     KEY_REPEAT_INTERVAL
 )
@@ -26,11 +26,15 @@ class Game:
     render: Render
     board: Board
     active_mino: ActiveTetrimino | None
+    hold_mino: ActiveTetrimino | None
+    can_hold: bool
 
     def __init__(self):
         self.render = Render()
         self.board = Board()
         self.active_mino = ActiveTetrimino(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+        self.hold_mino = None
+        self.can_hold = True
         self.down_mino_trigger = TimeTrigger(interval=TETRIMINO_DROP_INTERVAL)
 
     def _get_input_commands(self) -> list[Command]:
@@ -63,6 +67,11 @@ class Game:
         if key_hard_drop.state == KeyState.PRESS and key_hard_drop.elapsed % KEY_REPEAT_INTERVAL == 0:
             commands.append(MoveHardDropCommand())
 
+        # ホールド
+        key_hold = key_manager.get_key_input(HOT_KEY_MINO_HOLD)
+        if key_hold.state == KeyState.PRESS and key_hold.elapsed % KEY_REPEAT_INTERVAL == 0:
+            commands.append(HoldCommand())
+
         # 下移動（自動 or キー入力）
         key_move_down = key_manager.get_key_input(HOT_KEY_MINO_MOVE_DOWN)
         if (self.down_mino_trigger.is_trigger() or
@@ -82,6 +91,10 @@ class Game:
     def _spawn_tetrimino(self) -> None:
         """新しいテトリミノをスポーン"""
         self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+
+        # 新しいテトリミノでホールド可能にする
+        self.can_hold = True
+
         if not self._is_valid_position(self.active_mino):
             self.active_mino = None
             self.is_continue = False
@@ -150,6 +163,32 @@ class Game:
                 self._spawn_tetrimino()
                 break
 
+    def _execute_hold(self) -> None:
+        """ホールドを実行（アクティブなテトリミノとホールドしているテトリミノを入れ替え）"""
+        # ホールド可能かチェック
+        if not self.can_hold:
+            return
+
+        if self.hold_mino is None:
+            # 初回ホールド：アクティブなミノをホールドし、新しいミノをスポーン
+            self.hold_mino = copy.deepcopy(self.active_mino)
+            # 新しいミノをスポーン（_spawn_tetrimino を使わずに直接処理）
+            self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+            if not self._is_valid_position(self.active_mino):
+                self.active_mino = None
+                self.is_continue = False
+        else:
+            # 2回目以降：アクティブなミノとホールドしているミノを入れ替え
+            temp = copy.deepcopy(self.active_mino)
+            self.active_mino = copy.deepcopy(self.hold_mino)
+            self.hold_mino = temp
+
+            # 入れ替えたアクティブミノを初期位置に移動
+            self.active_mino.spawn(TETRIMINO_SPAWN_ROW, TETRIMINO_SPAWN_COL)
+        
+        # ホールドフラグを False にする
+        self.can_hold = False
+
     def _apply_commands(self, commands: list[Command]) -> None:
         """コマンドを適用する"""
         if not commands:
@@ -165,12 +204,13 @@ class Game:
             elif isinstance(command, BasicCommand):
                 basic_commands.append(command)
 
-        # 特殊コマンド（ハードドロップ）がある場合は他のコマンドを無視して即座に実行
+        # 特殊コマンドがある場合は他のコマンドを無視して即座に実行
         if special_commands:
-            # 現在はハードドロップのみだが、将来的に他の特殊コマンドも対応可能
             for special_command in special_commands:
                 if isinstance(special_command, MoveHardDropCommand):
                     self._execute_hard_drop()
+                elif isinstance(special_command, HoldCommand):
+                    self._execute_hold()
             return
 
         # 基本コマンドを処理（下移動コマンドとそれ以外を分離）
@@ -204,7 +244,7 @@ class Game:
         """画面を描画する"""
         # ゴーストミノを作成
         ghost_mino = self._create_ghost_mino()
-        self.render.draw(self.board, self.active_mino, ghost_mino, is_cursor_up)
+        self.render.draw(self.board, self.active_mino, ghost_mino, self.hold_mino, is_cursor_up)
 
 
 class GameManager:
@@ -219,7 +259,7 @@ class GameManager:
     def __del__(self):
         # 最終描画（ゴーストミノも作成）
         ghost_mino = self.game._create_ghost_mino()
-        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, is_cursor_up=False)
+        self.game.render.draw(self.game.board, self.game.active_mino, ghost_mino, self.game.hold_mino, is_cursor_up=False)
 
     def _is_quit(self) -> bool:
         """終了キーが押されたかチェック"""

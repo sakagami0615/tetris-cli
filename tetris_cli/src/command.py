@@ -83,6 +83,16 @@ class MoveHardDropCommand(SpecialCommand):
     pass
 
 
+class HoldCommand(SpecialCommand):
+    """テトリミノをホールドするコマンド
+
+    このコマンドはGameオブジェクトに直接作用するため、
+    execute()メソッドを持たず、Game側で特別に処理される
+    """
+
+    pass
+
+
 class NoOpTetriminoMoveCommand(BasicCommand):
     """何もしないコマンド"""
 
