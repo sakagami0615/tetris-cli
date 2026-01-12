@@ -148,8 +148,8 @@ class TetriminoSpawner:
         """
         # テトリミノの出現順をシャッフル
         self._curr_index = (self._curr_index + 1) % self._n_type
-        #if self._curr_index == 0:
-        #    random.shuffle(self._type_list)
+        if self._curr_index == 0:
+            random.shuffle(self._type_list)
         return self._type_list[self._curr_index].value
 
 
