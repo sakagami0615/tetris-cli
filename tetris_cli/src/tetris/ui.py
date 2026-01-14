@@ -1,123 +1,255 @@
 import copy
+from dataclasses import dataclass
 
 from tetris_cli.src.common import console
 
 from tetris_cli.src.tetris.board import Board, CellType, BOARD_WALL_COLOR
 from tetris_cli.src.tetris.tetrimino import Tetrimino
-from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT, RENDER_ROW_OFFSET
+from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT
+
+
+@dataclass
+class Pixel:
+    """画面バッファの1ピクセル(1キャラクタ)を表す"""
+    char: str = " "  # 表示文字(1文字分)
+    color: tuple[int, int, int] = (255, 255, 255)  # RGB色
+
+
+class ScreenBuffer:
+    """画面バッファクラス - 画面全体をピクセル配列として管理"""
+
+    def __init__(self, width: int, height: int):
+        """
+        Args:
+            width: バッファの幅(文字数)
+            height: バッファの高さ(行数)
+        """
+        self.width = width
+        self.height = height
+        # 2次元配列でバッファを初期化
+        self.buffer: list[list[Pixel]] = [
+            [Pixel() for _ in range(width)] for _ in range(height)
+        ]
+
+    def set_pixel(self, row: int, col: int, char: str, color: tuple[int, int, int] = (255, 255, 255)) -> None:
+        """バッファの指定位置にピクセルを設定
+
+        全角文字(2バイト文字)の場合は2ピクセル分を使用します。
+        - col位置: 全角文字を格納
+        - col+1位置: 空文字("")を格納(2バイト目のマーカー)
+
+        Args:
+            row: 行番号(0-indexed)
+            col: 列番号(0-indexed)
+            char: 表示文字(全角の場合は"■ "のように2文字、半角の場合は"a"のように1文字)
+            color: RGB色
+        """
+        if not (0 <= row < self.height and 0 <= col < self.width):
+            return
+
+        # 全角文字(2文字)かどうかを判定
+        if len(char) == 2:
+            # 全角文字の場合: 1文字目を現在位置に、2文字目(通常は空白)を次の位置に
+            self.buffer[row][col] = Pixel(char=char[0], color=color)
+            if col + 1 < self.width:
+                self.buffer[row][col + 1] = Pixel(char=char[1], color=color)
+        else:
+            # 半角文字の場合: そのまま設定
+            self.buffer[row][col] = Pixel(char=char, color=color)
+
+    def set_text(self, row: int, col: int, text: str, color: tuple[int, int, int] = (255, 255, 255)) -> None:
+        """バッファの指定位置にテキストを設定
+
+        Args:
+            row: 行番号
+            col: 開始列番号
+            text: 表示テキスト
+            color: RGB色
+        """
+        current_col = col
+        for char in text:
+            # 全角文字判定(簡易的に文字コードで判定)
+            if ord(char) > 127:  # 全角文字
+                # 全角文字は次の文字と組み合わせて2文字として扱う可能性があるが
+                # ここでは1文字ずつ処理する(半角スペースを追加)
+                self.set_pixel(row, current_col, char + " ", color)
+                current_col += 2
+            else:  # 半角文字
+                self.set_pixel(row, current_col, char, color)
+                current_col += 1
+
+    def render(self) -> None:
+        """画面に出力"""
+        for row in self.buffer:
+            for pixel in row:
+                console.print_color(pixel.char, color=pixel.color, end="")
+            console.print_color("")  # 改行
 
 
 class Render:
-    """ゲーム画面の描画を担当"""
+    """ゲーム画面の描画を担当 - バッファ方式で描画"""
 
-    def _overlay_ghost_mino(self, cells: list[list], ghost_mino: Tetrimino) -> None:
-        """ゴースト（落下予測位置）をセルに重ね合わせる"""
-        # ゴーストのブロックを配置
-        for r, c in ghost_mino.blocks():
-            # まだ埋まっていないセルにのみゴーストを表示
-            if cells[r][c].cell_type == CellType.EMPTY:
-                cells[r][c].cell_type = CellType.GHOST
-                # ゴーストは元の色を暗くして表示
-                original_color = ghost_mino.mino_type.color
-                cells[r][c].color = tuple(int(v * 0.5) for v in original_color)  # 50%の明度
+    # バッファサイズ
+    RENDER_BUFFER_SIZE_ROW = 2 + 21         # タイトルエリア + 盤面サイズ
+    RENDER_BUFFER_SIZE_COL = 16 + 4 + 24    # ホールドエリア(8*2) + 余白(2*2) + 盤面サイズ(12*2)
 
-    def _overlay_active_mino(self, cells: list[list], active_mino: Tetrimino) -> None:
-        """アクティブなテトリミノをセルに重ね合わせる"""
-        for r, c in active_mino.blocks():
-            cells[r][c].cell_type = CellType.MINO
-            cells[r][c].color = active_mino.mino_type.color
+    # 画面レイアウト定数
+    TITLE_POS_ROW: int = 0
+    TITLE_POS_COL: int = 0
+    DESC_POS_ROW: int = 9
+    DESC_POS_COL: int = 0
+    BOARD_POS_ROW: int = 2
+    BOARD_POS_COL: int = 16
+    HOLD_POS_ROW: int = 1
+    HOLD_POS_COL: int = 1
+    SCORE_POS_ROW: int = 21
+    SCORE_POS_COL: int = 0
 
-    def _draw_cell(self, cell) -> None:
-        """1セルを描画"""
-        if cell.cell_type == CellType.EMPTY:
-            console.print_color("  ", end="")
-        elif cell.cell_type == CellType.GHOST:
-            # ゴーストは枠線のみ表示
-            console.print_color("□ ", color=cell.color, end="")
-        else:
-            # 壁またはミノは塗りつぶし
-            console.print_color("■ ", color=cell.color, end="")
+    def __init__(self):
+        # 画面サイズを計算
+        self.buffer = ScreenBuffer(self.RENDER_BUFFER_SIZE_COL, self.RENDER_BUFFER_SIZE_ROW)
 
-    def _create_hold_display_grid(self, hold_mino: Tetrimino | None) -> list[list[bool]]:
-        """ホールドミノの表示用グリッド（4x4）を作成"""
-        # 4x4のグリッドを作成（False = 空、True = ブロック）
-        grid = [[False for _ in range(4)] for _ in range(4)]
+    def _render_title(self) -> None:
+        """タイトルをバッファに描画"""
+        self.buffer.set_text(self.TITLE_POS_ROW, self.TITLE_POS_COL, "/// TETRIS ///")
 
-        if hold_mino is None:
-            return grid
+    def _render_description(self) -> None:
+        """操作説明をバッファに描画"""
+        self.buffer.set_text(self.DESC_POS_ROW,     self.DESC_POS_COL, "<key>")
+        self.buffer.set_text(self.DESC_POS_ROW + 1, self.DESC_POS_COL, "[←] left move")
+        self.buffer.set_text(self.DESC_POS_ROW + 2, self.DESC_POS_COL, "[→] right move")
+        self.buffer.set_text(self.DESC_POS_ROW + 3, self.DESC_POS_COL, "[x] cw rotate")
+        self.buffer.set_text(self.DESC_POS_ROW + 4, self.DESC_POS_COL, "[z] ccw rotate")
+        self.buffer.set_text(self.DESC_POS_ROW + 5, self.DESC_POS_COL, "[↑] hard drop")
+        self.buffer.set_text(self.DESC_POS_ROW + 6, self.DESC_POS_COL, "[lshift] hold")
+        self.buffer.set_text(self.DESC_POS_ROW + 7, self.DESC_POS_COL, "[q] quit")
 
-        # ホールドミノの最初の回転（rotate=0）のブロック配置を取得
-        blocks = hold_mino.mino_type.rotations[0]
+    def _render_board(self, board: Board, ghost_mino: Tetrimino | None, active_mino: Tetrimino | None) -> None:
+        """ボード(盤面)をバッファに描画
 
-        # 中心を(2, 1)として配置（4x4グリッドの中心）
-        center_r, center_c = 2, 1
-        for dr, dc in blocks:
-            r = center_r + dr
-            c = center_c + dc
-            if 0 <= r < 4 and 0 <= c < 4:
-                grid[r][c] = True
+        Args:
+            board: ゲームボード
+            ghost_mino: ゴーストミノ
+            active_mino: アクティブミノ
+        """
 
-        return grid
+        # 盤面の開始位置
+        start_row = self.BOARD_POS_ROW
+        start_col = self.BOARD_POS_COL
 
-    def _draw_field(self, cells: list[list], hold_mino: Tetrimino | None, score: int) -> None:
-        """ボード全体を描画（ホールド情報を右側に表示）"""
-        # タイトル行を描画
-        console.print_color("←→:move,xz:rot")
-        console.print_color("↑:harddrop,lshift:hold", end="")
-        console.print_color(" " * 4 + "HOLD")
-
-        # ホールドミノのグリッドを作成
-        hold_grid = self._create_hold_display_grid(hold_mino)
-        hold_color = hold_mino.mino_type.color if hold_mino else (128, 128, 128)
-
-        row_index = 0
-        for r in range(RENDER_ROW_OFFSET, BOARD_HEIGHT + 2):
-            # ボードを描画
-            for c in range(BOARD_WIDTH + 2):
-                self._draw_cell(cells[r][c])
-
-            # ホールドエリアを右側に表示
-            if row_index == 0:
-                # 上部の壁（6ブロック幅 = 4マス + 左右の壁）
-                console.print_color("  ", end="")
-                for _ in range(6):
-                    console.print_color("■ ", color=BOARD_WALL_COLOR, end="")
-            elif 1 <= row_index <= 4:
-                # 左の壁 + ホールドミノ + 右の壁
-                console.print_color("  ", end="")
-                console.print_color("■ ", color=BOARD_WALL_COLOR, end="")
-                for col in range(4):
-                    if hold_grid[row_index - 1][col]:
-                        console.print_color("■ ", color=hold_color, end="")
-                    else:
-                        console.print_color("  ", end="")
-                console.print_color("■ ", color=BOARD_WALL_COLOR, end="")
-            elif row_index == 5:
-                # 下部の壁（6ブロック幅）
-                console.print_color("  ", end="")
-                for _ in range(6):
-                    console.print_color("■ ", color=BOARD_WALL_COLOR, end="")
-
-            console.print_color("")
-            row_index += 1
-        console.print_color(f"score: {score}")
-
-    def draw(self, board: Board, active_mino: Tetrimino | None, ghost_mino: Tetrimino | None, hold_mino: Tetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
-        """ゲーム画面を描画"""
-        # ボードのコピーを作成
+        # ボードのコピーを作成してミノを重ね合わせ
         cells = copy.deepcopy(board.cells)
 
-        # ゴーストとアクティブなテトリミノを重ね合わせ
-        # 先にゴーストを描画（下層）
+        # ゴーストを重ね合わせ(下層)
         if ghost_mino:
-            self._overlay_ghost_mino(cells, ghost_mino)
+            for r, c in ghost_mino.blocks():
+                if cells[r][c].cell_type == CellType.EMPTY:
+                    cells[r][c].cell_type = CellType.GHOST
+                    original_color = ghost_mino.mino_type.color
+                    cells[r][c].color = tuple(int(v * 0.5) for v in original_color)
+
+        # アクティブミノを重ね合わせ(上層)
         if active_mino:
-            # 次にアクティブなテトリミノを描画（上層）
-            self._overlay_active_mino(cells, active_mino)
+            for r, c in active_mino.blocks():
+                cells[r][c].cell_type = CellType.MINO
+                cells[r][c].color = active_mino.mino_type.color
 
-        # 描画
-        self._draw_field(cells, hold_mino, score)
+        # バッファに描画(全角文字は2ピクセル幅なのでcol*2で配置)
+        for r in range(1, BOARD_HEIGHT + 2):
+            for c in range(BOARD_WIDTH + 2):
+                cell = cells[r][c]
+                buffer_row = start_row + (r - 1)
+                buffer_col = start_col + c * 2  # 全角文字は2ピクセル幅
 
-        # カーソルを上に戻す（タイトル行 + ボード行）
+                # セルタイプに応じて文字と色を決定
+                if cell.cell_type == CellType.EMPTY:
+                    char = "  "
+                    color = (255, 255, 255)
+                elif cell.cell_type == CellType.GHOST:
+                    char = "□ "
+                    color = cell.color
+                else:
+                    char = "■ "
+                    color = cell.color
+
+                self.buffer.set_pixel(buffer_row, buffer_col, char, color)
+
+    def _render_hold_area(self, hold_mino: Tetrimino | None) -> None:
+        """ホールドエリアをバッファに描画
+
+        Args:
+            hold_mino: ホールド中のミノ
+        """
+        self.buffer.set_text(self.HOLD_POS_ROW, self.HOLD_POS_COL, "HOLD")
+
+        # ホールドエリアの開始位置
+        start_row = self.HOLD_POS_ROW + 1
+        start_col = self.HOLD_POS_COL
+
+        # ホールドエリアの枠を描画(6x6、全角文字は2ピクセル幅)
+        # 上部の壁
+        for i in range(6):
+            self.buffer.set_pixel(start_row, start_col + i * 2, "■ ", BOARD_WALL_COLOR)
+
+        # 中央4行(左右の壁 + 中身)
+        for i in range(4):
+            row = start_row + 1 + i
+            # 左の壁
+            self.buffer.set_pixel(row, start_col, "■ ", BOARD_WALL_COLOR)
+            # 右の壁
+            self.buffer.set_pixel(row, start_col + 5 * 2, "■ ", BOARD_WALL_COLOR)
+
+        # 下部の壁
+        for i in range(6):
+            self.buffer.set_pixel(start_row + 5, start_col + i * 2, "■ ", BOARD_WALL_COLOR)
+
+        # ホールドミノを描画
+        if hold_mino:
+            blocks = hold_mino.mino_type.rotations[0]
+            center_r, center_c = 2, 1  # 4x4グリッド内の中心
+            color = hold_mino.mino_type.color
+
+            for dr, dc in blocks:
+                r = center_r + dr
+                c = center_c + dc
+                if 0 <= r < 4 and 0 <= c < 4:
+                    buffer_row = start_row + 1 + r
+                    buffer_col = start_col + (1 + c) * 2  # 全角文字は2ピクセル幅
+                    self.buffer.set_pixel(buffer_row, buffer_col, "■ ", color)
+
+    def _render_score(self, score: int) -> None:
+        """フッター(スコア)をバッファに描画
+
+        Args:
+            score: 現在のスコア
+        """
+        self.buffer.set_text(self.SCORE_POS_ROW,     self.SCORE_POS_COL, "<score>")
+        self.buffer.set_text(self.SCORE_POS_ROW + 1, self.SCORE_POS_COL, f"{score}")
+
+    def draw(self, board: Board, active_mino: Tetrimino | None, ghost_mino: Tetrimino | None,
+             hold_mino: Tetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
+        """ゲーム画面を描画
+
+        Args:
+            board: ゲームボード
+            active_mino: アクティブミノ
+            ghost_mino: ゴーストミノ
+            hold_mino: ホールド中のミノ
+            score: スコア
+            is_cursor_up: カーソルを上に戻すか
+        """
+        # バッファをクリア
+        self.buffer = ScreenBuffer(self.buffer.width, self.buffer.height)
+
+        # 各要素をバッファに描画
+        self._render_title()
+        self._render_description()
+        self._render_board(board, ghost_mino, active_mino)
+        self._render_hold_area(hold_mino)
+        self._render_score(score)
+
+        self.buffer.render()
+
+        # カーソルを上に戻す
         if is_cursor_up:
-            console.cursor_up(BOARD_HEIGHT + 4)
+            console.cursor_up(self.buffer.height)

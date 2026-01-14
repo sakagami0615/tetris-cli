@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from tetris_cli.src.tetris.game import Game
 from tetris_cli.src.tetris.board import CellType
-from tetris_cli.src.tetris.command import MoveRightCommand, MoveLeftCommand, MoveDownCommand, HoldCommand, MoveHardDropCommand
+from tetris_cli.src.tetris.command import MoveRightCommand, MoveLeftCommand, MoveDownCommand, HoldCommand, MoveHardDropCommand, SpecialCommand
 from tetris_cli.src.common.key import KeyState
 
 @pytest.fixture
@@ -185,11 +185,75 @@ def test_update_and_draw(game_context):
 def test_hold_game_over(game_context):
     """ホールド時のスポーンでゲームオーバーになるケース"""
     game, _ = game_context
-    
+
     # スポーン位置を埋める
     game.board.cells[1][5].cell_type = CellType.MINO
-    
+
     # ホールド実行（初回） -> 新しいミノをスポーンしようとして衝突 -> ゲームオーバー
     game._execute_hold()
-    
+
     assert not game.is_continue
+
+def test_hold_swap_game_over(game_context):
+    """ホールド入れ替え時にゲームオーバーになるケース"""
+    game, _ = game_context
+
+    # 初回ホールド
+    game._execute_hold()
+    assert game.tetrimino_manager.hold_mino is not None
+
+    # 新しいミノをスポーンさせるために固定
+    game.tetrimino_manager._can_hold = True
+
+    # スポーン位置を埋める
+    game.board.cells[1][5].cell_type = CellType.MINO
+
+    # 2回目のホールド実行 -> 入れ替え後のミノが配置できない -> ゲームオーバー
+    game._execute_hold()
+
+    assert not game.is_continue
+
+def test_apply_commands_down_landing(game_context):
+    """下移動で固定されるケース"""
+    game, _ = game_context
+
+    # アクティブミノを一番下まで移動
+    active_mino = game.tetrimino_manager.active_mino
+    while game._is_valid_position(active_mino):
+        active_mino.r += 1
+    active_mino.r -= 1  # 1つ戻す
+
+    # 下移動コマンドを適用 -> 固定されて新しいミノがスポーンするはず
+    initial_mino_type = active_mino.mino_type
+    commands = [MoveDownCommand()]
+    game._apply_commands(commands)
+
+    # 新しいミノがスポーンしているはず（初期位置に戻っている）
+    assert game.tetrimino_manager.active_mino.r == 1
+
+def test_apply_special_command_hard_drop(game_context):
+    """ハードドロップの特殊コマンド適用テスト"""
+    game, _ = game_context
+
+    # ハードドロップコマンドを直接適用
+    cmd = MoveHardDropCommand()
+    result = game._apply_special_command(cmd)
+
+    # 実施されたはず
+    assert result == True
+    # 新しいミノがスポーンしているはず
+    assert game.tetrimino_manager.active_mino.r == 1
+
+def test_apply_special_command_unknown(game_context):
+    """未知の特殊コマンドの適用テスト"""
+    game, _ = game_context
+
+    # 未知の特殊コマンドを作成（SpecialCommandを継承したダミークラス）
+    class UnknownSpecialCommand(SpecialCommand):
+        pass
+
+    cmd = UnknownSpecialCommand()
+    result = game._apply_special_command(cmd)
+
+    # 実施されなかったはず
+    assert result == False

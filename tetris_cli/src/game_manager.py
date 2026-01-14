@@ -40,3 +40,9 @@ class GameManager:
         finally:
             KeyManager(HOT_KEY_LIST).stop()
             console.clear_input_buffer()
+
+
+def run():
+    game_manager = GameManager()
+    game_manager.game_loop()
+    
