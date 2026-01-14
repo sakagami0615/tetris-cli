@@ -3,14 +3,14 @@ import copy
 from tetris_cli.src.common import console
 
 from tetris_cli.src.tetris.board import Board, CellType, BOARD_WALL_COLOR
-from tetris_cli.src.tetris.tetrimino import ActiveTetrimino
+from tetris_cli.src.tetris.tetrimino import Tetrimino
 from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT, RENDER_ROW_OFFSET
 
 
 class Render:
     """ゲーム画面の描画を担当"""
 
-    def _overlay_ghost_mino(self, cells: list[list], ghost_mino: ActiveTetrimino) -> None:
+    def _overlay_ghost_mino(self, cells: list[list], ghost_mino: Tetrimino) -> None:
         """ゴースト（落下予測位置）をセルに重ね合わせる"""
         # ゴーストのブロックを配置
         for r, c in ghost_mino.blocks():
@@ -21,7 +21,7 @@ class Render:
                 original_color = ghost_mino.mino_type.color
                 cells[r][c].color = tuple(int(v * 0.5) for v in original_color)  # 50%の明度
 
-    def _overlay_active_mino(self, cells: list[list], active_mino: ActiveTetrimino) -> None:
+    def _overlay_active_mino(self, cells: list[list], active_mino: Tetrimino) -> None:
         """アクティブなテトリミノをセルに重ね合わせる"""
         for r, c in active_mino.blocks():
             cells[r][c].cell_type = CellType.MINO
@@ -38,7 +38,7 @@ class Render:
             # 壁またはミノは塗りつぶし
             console.print_color("■ ", color=cell.color, end="")
 
-    def _create_hold_display_grid(self, hold_mino: ActiveTetrimino | None) -> list[list[bool]]:
+    def _create_hold_display_grid(self, hold_mino: Tetrimino | None) -> list[list[bool]]:
         """ホールドミノの表示用グリッド（4x4）を作成"""
         # 4x4のグリッドを作成（False = 空、True = ブロック）
         grid = [[False for _ in range(4)] for _ in range(4)]
@@ -59,7 +59,7 @@ class Render:
 
         return grid
 
-    def _draw_field(self, cells: list[list], hold_mino: ActiveTetrimino | None, score: int) -> None:
+    def _draw_field(self, cells: list[list], hold_mino: Tetrimino | None, score: int) -> None:
         """ボード全体を描画（ホールド情報を右側に表示）"""
         # タイトル行を描画
         console.print_color("←→:move,xz:rot")
@@ -102,7 +102,7 @@ class Render:
             row_index += 1
         console.print_color(f"score: {score}")
 
-    def draw(self, board: Board, active_mino: ActiveTetrimino | None, ghost_mino: ActiveTetrimino | None, hold_mino: ActiveTetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
+    def draw(self, board: Board, active_mino: Tetrimino | None, ghost_mino: Tetrimino | None, hold_mino: Tetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
         """ゲーム画面を描画"""
         # ボードのコピーを作成
         cells = copy.deepcopy(board.cells)

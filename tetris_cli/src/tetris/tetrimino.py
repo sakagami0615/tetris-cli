@@ -1,3 +1,4 @@
+import copy
 import random
 from enum import Enum
 from dataclasses import dataclass
@@ -153,14 +154,17 @@ class TetriminoSpawner:
         return self._type_list[self._curr_index].value
 
 
-class ActiveTetrimino:
-    """現在アクティブなテトリミノ"""
+class Tetrimino:
+    """現在アクティブなテトリミノ
+
+    位置、回転状態、ミノタイプを保持する値オブジェクト。
+    スポーン処理はTetriminoManagerが担当する。
+    """
     _mino_type: TetriminoDefine
     _r: int
     _c: int
-    _rotate: int = 0
-    _n_rotate: int = 0
-    _spawner: TetriminoSpawner = TetriminoSpawner()
+    _rotate: int
+    _n_rotate: int
 
     @property
     def r(self) -> int: return self._r
@@ -179,20 +183,16 @@ class ActiveTetrimino:
     @rotate.setter
     def rotate(self, v: int): self._rotate = v
 
-    def __init__(self):
-        self.spawn()
-    
-    def init_pos(self) -> None:
-        """初期位置にテトリミノを移動"""
-        self._r = TETRIMINO_SPAWN_ROW 
+    def __init__(self, mino_type: TetriminoDefine):
+        """
+        Args:
+            mino_type: このテトリミノのタイプ定義
+        """
+        self._mino_type = mino_type
+        self._n_rotate = len(mino_type.rotations)
+        self._r = TETRIMINO_SPAWN_ROW
         self._c = TETRIMINO_SPAWN_COL
         self._rotate = 0
-
-    def spawn(self) -> None:
-        """新しいテトリミノをスポーン"""
-        self._mino_type = self._spawner.get_next_tetrimino()
-        self._n_rotate = len(self._mino_type.rotations)
-        self.init_pos()
 
     def blocks(self) -> list[tuple[int, int]]:
         """現在の回転状態でのブロック座標を取得"""
@@ -200,3 +200,127 @@ class ActiveTetrimino:
             (self._r + dr, self._c + dc)
             for dr, dc in self._mino_type.rotations[self._rotate]
         ]
+
+
+class TetriminoManager:
+    """テトリミノの状態管理(アクティブ、ホールド、ゴースト)を担当するクラス
+
+    Boardへの依存を持たず、衝突判定ロジックは外部から注入される。
+    TetriminoSpawnerを保持し、7-bag方式でテトリミノを生成する。
+    これによりテストが容易になり、疎結合な設計を実現する。
+    """
+    _spawner: TetriminoSpawner
+    _active_mino: Tetrimino | None
+    _hold_mino: Tetrimino | None
+    _can_hold: bool
+
+    def __init__(self):
+        self._spawner = TetriminoSpawner()
+        self._active_mino = self._create_new_tetrimino()
+        self._hold_mino = None
+        self._can_hold = True
+
+    @property
+    def active_mino(self) -> Tetrimino: return self._active_mino
+    @property
+    def hold_mino(self) -> Tetrimino | None: return self._hold_mino
+    @property
+    def can_hold(self) -> bool: return self._can_hold
+
+    def _create_new_tetrimino(self) -> Tetrimino:
+        """新しいテトリミノを生成
+
+        Returns:
+            初期位置に配置された新しいテトリミノ
+        """
+        mino_type = self._spawner.get_next_tetrimino()
+        return Tetrimino(mino_type)
+
+    def spawn(self, is_valid_position: callable) -> bool:
+        """新しいテトリミノをスポーン
+
+        Args:
+            is_valid_position: テトリミノの位置が有効かを判定する関数
+
+        Returns:
+            スポーンに成功したらTrue、ゲームオーバーならFalse
+        """
+        self._active_mino = self._create_new_tetrimino()
+        self._can_hold = True
+
+        if not is_valid_position(self._active_mino):
+            # NOTE: スポーンに失敗した場合は、ゲームオーバー
+            #       アクティブミノはNoneにし、最終描画されないようにする
+            self._active_mino = None
+            return False
+
+        return True
+
+    def hold(self, is_valid_position: callable) -> bool:
+        """ホールド機能を実行(アクティブミノとホールドミノを入れ替え)
+
+        Args:
+            is_valid_position: テトリミノの位置が有効かを判定する関数
+
+        Returns:
+            ホールド済みor成功したらTrue、ゲームオーバーならFalse
+        """
+        if not self._can_hold:
+            return True
+
+        if self._hold_mino is None:
+            # 初回ホールド: アクティブミノをホールドし、新しいミノをスポーン
+            self._hold_mino = copy.deepcopy(self._active_mino)
+            self._active_mino = self._create_new_tetrimino()
+        else:
+            # 2回目以降: アクティブミノとホールドミノを入れ替え
+            temp_mino = copy.deepcopy(self._active_mino)
+            self._active_mino = copy.deepcopy(self._hold_mino)
+            self._hold_mino = temp_mino
+
+            # 入れ替えたアクティブミノを初期位置に移動
+            self._active_mino.r = TETRIMINO_SPAWN_ROW
+            self._active_mino.c = TETRIMINO_SPAWN_COL
+            self._active_mino.rotate = 0
+        
+        # NOTE: ゲームオーバー直前にHoldすると、差し替えたテトリミノが置けない可能性がある
+        if not is_valid_position(self._active_mino):
+            # NOTE: ホールドに失敗した場合は、ゲームオーバー
+            #       アクティブミノはNoneにし、最終描画されないようにする
+            self._active_mino = None
+            return False
+
+        self._can_hold = False
+        return True
+
+    def create_ghost(self, is_valid_position: callable) -> Tetrimino | None:
+        """ゴースト(落下予測位置)のテトリミノを作成
+
+        Args:
+            is_valid_position: テトリミノの位置が有効かを判定する関数
+
+        Returns:
+            ゴーストミノ。アクティブミノがない場合はNone
+        """
+        if not self._active_mino:
+            return None
+
+        ghost_mino = copy.deepcopy(self._active_mino)
+
+        # 着地するまで下に移動
+        while True:
+            ghost_mino.r += 1
+
+            # 衝突チェック
+            original_r = self._active_mino.r
+            self._active_mino.r = ghost_mino.r
+
+            if not is_valid_position(self._active_mino):
+                # 衝突したら1マス戻す
+                ghost_mino.r -= 1
+                self._active_mino.r = original_r
+                break
+
+            self._active_mino.r = original_r
+
+        return ghost_mino
