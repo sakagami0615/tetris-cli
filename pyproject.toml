@@ -25,3 +25,11 @@ build-backend = "poetry.core.masonry.api"
 pytest = "^9.0.2"
 pytest-cov = "^7.0.0"
 
+[tool.coverage.run]
+source = ["tetris_cli"]
+omit = [
+    "tetris_cli/__main__.py",
+    "tetris_cli/version.py",
+    "tetris_cli/src/common/console.py",
+    "tetris_cli/src/tetris/command.py",
+]

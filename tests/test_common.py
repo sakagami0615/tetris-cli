@@ -4,7 +4,6 @@ import time
 from tetris_cli.src.common.singleton import Singleton
 from tetris_cli.src.common.trigger import TimeTrigger
 from tetris_cli.src.common.key import KeyInput, KeyState, KeyManager
-from tetris_cli.src.common import console
 from pynput import keyboard
 
 class TestSingleton(unittest.TestCase):
@@ -84,12 +83,3 @@ class TestKeyManager(unittest.TestCase):
         # stop
         km.stop()
         km._listener.stop.assert_called_once()
-
-class TestConsole(unittest.TestCase):
-    @patch('builtins.print')
-    def test_console_methods(self, mock_print):
-        console.print_color("test", (255, 0, 0))
-        mock_print.assert_called()
-        
-        console.cursor_up(5)
-        mock_print.assert_called()

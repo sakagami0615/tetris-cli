@@ -4,7 +4,7 @@ from enum import Enum
 
 from tetris_cli.src.common.color import Color
 
-from tetris_cli.src.tetris.tetrimino import ActiveTetrimino
+from tetris_cli.src.tetris.tetrimino import Tetrimino
 from tetris_cli.src.tetris.const import BOARD_WIDTH, BOARD_HEIGHT
 
 
@@ -64,7 +64,7 @@ class Board:
     def __init__(self):
         self.cells = self._create_cells()
     
-    def write_tetrimino(self, active_mino: ActiveTetrimino) -> None:
+    def write_tetrimino(self, active_mino: Tetrimino) -> None:
         """テトリミノをボードに書き込む"""
         for r, c in active_mino.blocks():
             self.cells[r][c].cell_type = CellType.MINO

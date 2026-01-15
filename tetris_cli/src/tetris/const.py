@@ -37,6 +37,3 @@ TETRIMINO_SPAWN_COL = 5
 
 # キー入力の反復間隔（フレーム数）
 KEY_REPEAT_INTERVAL = 2
-
-# 描画の行オフセット（壁を考慮）
-RENDER_ROW_OFFSET = 1
