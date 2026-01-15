@@ -124,34 +124,58 @@ class TetriminoSpawner:
     7種類のテトリミノをランダムな順序で出現させる。
     全7種類が出現したら再度シャッフルして繰り返す（7-bag方式）。
     """
-    _type_list: list[TetriminoDefine]
+    _base_type_list: list[TetriminoDefine]
+    _next_type_list: list[TetriminoDefine]
 
     _curr_index: int
     _n_type: int
 
     def __init__(self):
-        self._type_list = [
-            TetriminoType.MINO_O,
-            TetriminoType.MINO_I,
-            TetriminoType.MINO_L,
-            TetriminoType.MINO_J,
-            TetriminoType.MINO_S,
-            TetriminoType.MINO_Z,
-            TetriminoType.MINO_T,
+        self._base_type_list = [
+            TetriminoType.MINO_O.value,
+            TetriminoType.MINO_I.value,
+            TetriminoType.MINO_L.value,
+            TetriminoType.MINO_J.value,
+            TetriminoType.MINO_S.value,
+            TetriminoType.MINO_Z.value,
+            TetriminoType.MINO_T.value,
         ]
-        self._curr_index = -1
-        self._n_type = len(self._type_list)
+        self._n_type = len(self._base_type_list)
+
+        # NOTE: 次ミノを2回補充して十分な個数確保しておく
+        self._next_type_list = []
+        self._replenish_next_tetrimino()
+        self._replenish_next_tetrimino()
+
+    def _replenish_next_tetrimino(self):
+        type_list = self._base_type_list[:]
+        random.shuffle(type_list)
+        self._next_type_list += type_list
 
     def get_next_tetrimino(self) -> TetriminoDefine:
         """次のテトリミノタイプを取得
 
         7種類全てが出現したら、リストをシャッフルして新しいサイクルを開始する。
         """
-        # テトリミノの出現順をシャッフル
-        self._curr_index = (self._curr_index + 1) % self._n_type
-        if self._curr_index == 0:
-            random.shuffle(self._type_list)
-        return self._type_list[self._curr_index].value
+        # 次のミノをpopする
+        next_mino = self._next_type_list.pop(0)
+
+        # 次のテトリミノが少なくなったら補充する
+        if len(self._next_type_list) < self._n_type:
+            self._replenish_next_tetrimino()
+
+        return next_mino
+
+    def peek_next_tetrimino_list(self, count: int) -> list[TetriminoDefine]:
+        """次に出現する複数のテトリミノタイプを取得（消費しない）
+
+        Args:
+            count: 取得するテトリミノの数
+
+        Returns:
+            次に出現予定のテトリミノタイプのリスト
+        """
+        return self._next_type_list[:count]
 
 
 class Tetrimino:
@@ -226,6 +250,26 @@ class TetriminoManager:
     def hold_mino(self) -> Tetrimino | None: return self._hold_mino
     @property
     def can_hold(self) -> bool: return self._can_hold
+
+    @property
+    def next_mino(self) -> Tetrimino:
+        """次に出現するテトリミノのプレビューを取得
+
+        Returns:
+            次に出現予定のテトリミノ（初期位置に配置された状態）
+        """
+        next_mino_type = self._spawner.peek_next_tetrimino_list(1)[0]
+        return Tetrimino(next_mino_type)
+
+    @property
+    def next_minos(self) -> list[Tetrimino]:
+        """次に出現する複数のテトリミノのプレビューを取得
+
+        Returns:
+            次に出現予定のテトリミノのリスト（3つ、初期位置に配置された状態）
+        """
+        next_mino_types = self._spawner.peek_next_tetrimino_list(3)
+        return [Tetrimino(mino_type) for mino_type in next_mino_types]
 
     def _create_new_tetrimino(self) -> Tetrimino:
         """新しいテトリミノを生成

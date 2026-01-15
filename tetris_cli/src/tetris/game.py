@@ -208,4 +208,5 @@ class Game:
         ghost_mino = self._create_ghost_mino()
         active_mino = self.tetrimino_manager.active_mino
         hold_mino = self.tetrimino_manager.hold_mino
-        self.render.draw(self.board, active_mino, ghost_mino, hold_mino, self.score, is_cursor_up)
+        next_minos = self.tetrimino_manager.next_minos
+        self.render.draw(self.board, active_mino, ghost_mino, hold_mino, next_minos, self.score, is_cursor_up)

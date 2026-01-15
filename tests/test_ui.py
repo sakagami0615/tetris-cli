@@ -15,9 +15,14 @@ def test_draw(mock_cursor_up, mock_print_color, render):
     active_mino = Tetrimino(TetriminoType.MINO_O.value)
     ghost_mino = Tetrimino(TetriminoType.MINO_I.value)
     hold_mino = Tetrimino(TetriminoType.MINO_T.value)
+    next_minos = [
+        Tetrimino(TetriminoType.MINO_L.value),
+        Tetrimino(TetriminoType.MINO_J.value),
+        Tetrimino(TetriminoType.MINO_S.value),
+    ]
 
     # 描画メソッドを実行（エラーが出ないことを確認）
-    render.draw(board, active_mino, ghost_mino, hold_mino, score=100)
+    render.draw(board, active_mino, ghost_mino, hold_mino, next_minos, score=100)
 
     # printが呼ばれたか確認
     assert mock_print_color.called
@@ -64,7 +69,10 @@ def test_render_methods(mock_print_color, render):
 
     # タイトル描画テスト
     render._render_title()
-    assert render.buffer.buffer[0][0].char != " "
+    # タイトルが描画されていることを確認（アンダースコアがあるはず）
+    assert any(
+        pixel.char == "_" for row in render.buffer.buffer[:7] for pixel in row
+    )
 
     # ボード描画テスト
     render._render_board(board, None, active_mino)
@@ -76,8 +84,10 @@ def test_render_methods(mock_print_color, render):
     # ホールドエリア描画テスト
     render._render_hold_area(hold_mino)
     # ホールドエリアが描画されていることを確認
+    # HOLD_POS_ROW (8) から始まる
+    hold_start = render.HOLD_POS_ROW + 1
     assert any(
-        pixel.char == "■" for row in render.buffer.buffer[2:7] for pixel in row
+        pixel.char == "■" for row in render.buffer.buffer[hold_start:hold_start+6] for pixel in row
     )
 
     # スコア描画テスト
@@ -87,4 +97,24 @@ def test_render_methods(mock_print_color, render):
     assert any(
         pixel.char in ["s", "c", "o", "r", "e", "1", "0"]
         for row in score_rows for pixel in row
+    )
+
+    # ネクストエリア描画テスト（3つ）
+    next_minos = [
+        Tetrimino(TetriminoType.MINO_L.value),
+        Tetrimino(TetriminoType.MINO_J.value),
+        Tetrimino(TetriminoType.MINO_S.value),
+    ]
+    render._render_next_area(next_minos)
+    # ネクストエリアが描画されていることを確認（3つのエリア分）
+    # NEXT_POS_ROW (8) から始まり、7行ごとに配置
+    next_start = render.NEXT_POS_ROW + 1
+    assert any(
+        pixel.char == "■" for row in render.buffer.buffer[next_start:next_start+6] for pixel in row
+    )
+    assert any(
+        pixel.char == "■" for row in render.buffer.buffer[next_start+7:next_start+13] for pixel in row
+    )
+    assert any(
+        pixel.char == "■" for row in render.buffer.buffer[next_start+14:next_start+20] for pixel in row
     )

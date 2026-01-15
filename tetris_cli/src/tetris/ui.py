@@ -90,19 +90,21 @@ class Render:
     """ゲーム画面の描画を担当 - バッファ方式で描画"""
 
     # バッファサイズ
-    RENDER_BUFFER_SIZE_ROW = 2 + 21         # タイトルエリア + 盤面サイズ
-    RENDER_BUFFER_SIZE_COL = 16 + 4 + 24    # ホールドエリア(8*2) + 余白(2*2) + 盤面サイズ(12*2)
+    RENDER_BUFFER_SIZE_ROW = 9 + 21                  # タイトルエリア + 盤面サイズ
+    RENDER_BUFFER_SIZE_COL = 16 + 4 + 24 + 4 + 16    # ホールドエリア(8*2) + 余白(2*2) + 盤面サイズ(12*2) + 余白(2*2) + ホールドエリア(8*2)
 
     # 画面レイアウト定数
     TITLE_POS_ROW: int = 0
-    TITLE_POS_COL: int = 0
-    DESC_POS_ROW: int = 9
+    TITLE_POS_COL: int = 2
+    DESC_POS_ROW: int = 16
     DESC_POS_COL: int = 0
-    BOARD_POS_ROW: int = 2
+    BOARD_POS_ROW: int = 9
     BOARD_POS_COL: int = 16
-    HOLD_POS_ROW: int = 1
+    HOLD_POS_ROW: int = 8
     HOLD_POS_COL: int = 1
-    SCORE_POS_ROW: int = 21
+    NEXT_POS_ROW: int = 8
+    NEXT_POS_COL: int = 43
+    SCORE_POS_ROW: int = 28
     SCORE_POS_COL: int = 0
 
     def __init__(self):
@@ -111,7 +113,13 @@ class Render:
 
     def _render_title(self) -> None:
         """タイトルをバッファに描画"""
-        self.buffer.set_text(self.TITLE_POS_ROW, self.TITLE_POS_COL, "/// TETRIS ///")
+        self.buffer.set_text(self.TITLE_POS_ROW,     self.TITLE_POS_COL, " __               __")
+        self.buffer.set_text(self.TITLE_POS_ROW + 1, self.TITLE_POS_COL, "/\\ \\__           /\\ \\__           __")
+        self.buffer.set_text(self.TITLE_POS_ROW + 2, self.TITLE_POS_COL, "\\ \\ ,_\\     __   \\ \\ ,_\\   _ __  /\\_\\     ____")
+        self.buffer.set_text(self.TITLE_POS_ROW + 3, self.TITLE_POS_COL, " \\ \\ \\/   /'__`\\  \\ \\ \\/  /\\`'__\\\\/\\ \\   /',__\\")
+        self.buffer.set_text(self.TITLE_POS_ROW + 4, self.TITLE_POS_COL, "  \\ \\ \\_ /\\  __/   \\ \\ \\_ \\ \\ \\/  \\ \\ \\ /\\__, `\\")
+        self.buffer.set_text(self.TITLE_POS_ROW + 5, self.TITLE_POS_COL, "   \\ \\__\\\\ \\____\\   \\ \\__\\ \\ \\_\\   \\ \\_\\\\/\\____/")
+        self.buffer.set_text(self.TITLE_POS_ROW + 6, self.TITLE_POS_COL, "    \\/__/ \\/____/    \\/__/  \\/_/    \\/_/ \\/___/")
 
     def _render_description(self) -> None:
         """操作説明をバッファに描画"""
@@ -217,6 +225,51 @@ class Render:
                     buffer_col = start_col + (1 + c) * 2  # 全角文字は2ピクセル幅
                     self.buffer.set_pixel(buffer_row, buffer_col, "■ ", color)
 
+    def _render_next_area(self, next_minos: list[Tetrimino]) -> None:
+        """ネクストエリアをバッファに描画
+
+        Args:
+            next_minos: 次に出現するミノのリスト（最大3つ）
+        """
+        self.buffer.set_text(self.NEXT_POS_ROW, self.NEXT_POS_COL, "NEXT")
+
+        # 3つのネクストミノを縦に並べて描画
+        for idx, next_mino in enumerate(next_minos[:3]):
+            # 各ネクストエリアの開始位置（7行ごとに配置）
+            start_row = self.NEXT_POS_ROW + 1 + idx * 7
+            start_col = self.NEXT_POS_COL
+
+            # ネクストエリアの枠を描画(6x6、全角文字は2ピクセル幅)
+            # 上部の壁
+            for i in range(6):
+                self.buffer.set_pixel(start_row, start_col + i * 2, "■ ", BOARD_WALL_COLOR)
+
+            # 中央4行(左右の壁 + 中身)
+            for i in range(4):
+                row = start_row + 1 + i
+                # 左の壁
+                self.buffer.set_pixel(row, start_col, "■ ", BOARD_WALL_COLOR)
+                # 右の壁
+                self.buffer.set_pixel(row, start_col + 5 * 2, "■ ", BOARD_WALL_COLOR)
+
+            # 下部の壁
+            for i in range(6):
+                self.buffer.set_pixel(start_row + 5, start_col + i * 2, "■ ", BOARD_WALL_COLOR)
+
+            # ネクストミノを描画
+            if next_mino:
+                blocks = next_mino.mino_type.rotations[0]
+                center_r, center_c = 2, 1  # 4x4グリッド内の中心
+                color = next_mino.mino_type.color
+
+                for dr, dc in blocks:
+                    r = center_r + dr
+                    c = center_c + dc
+                    if 0 <= r < 4 and 0 <= c < 4:
+                        buffer_row = start_row + 1 + r
+                        buffer_col = start_col + (1 + c) * 2  # 全角文字は2ピクセル幅
+                        self.buffer.set_pixel(buffer_row, buffer_col, "■ ", color)
+
     def _render_score(self, score: int) -> None:
         """フッター(スコア)をバッファに描画
 
@@ -227,7 +280,7 @@ class Render:
         self.buffer.set_text(self.SCORE_POS_ROW + 1, self.SCORE_POS_COL, f"{score}")
 
     def draw(self, board: Board, active_mino: Tetrimino | None, ghost_mino: Tetrimino | None,
-             hold_mino: Tetrimino | None, score: int = 0, is_cursor_up: bool = True) -> None:
+             hold_mino: Tetrimino | None, next_minos: list[Tetrimino], score: int = 0, is_cursor_up: bool = True) -> None:
         """ゲーム画面を描画
 
         Args:
@@ -235,6 +288,7 @@ class Render:
             active_mino: アクティブミノ
             ghost_mino: ゴーストミノ
             hold_mino: ホールド中のミノ
+            next_minos: 次に出現するミノのリスト（最大3つ）
             score: スコア
             is_cursor_up: カーソルを上に戻すか
         """
@@ -246,6 +300,7 @@ class Render:
         self._render_description()
         self._render_board(board, ghost_mino, active_mino)
         self._render_hold_area(hold_mino)
+        self._render_next_area(next_minos)
         self._render_score(score)
 
         self.buffer.render()
