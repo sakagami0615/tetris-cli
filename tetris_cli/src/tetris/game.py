@@ -42,13 +42,15 @@ class Game:
         key_manager = KeyManager(HOT_KEY_LIST)
 
         # 時計回り回転
+        # NOTE: 連続入力防止のため、キーを話したタイミングに処理する
         key_rot_cw = key_manager.get_key_input(HOT_KEY_MINO_ROTATE_CW)
-        if key_rot_cw.state == KeyState.PRESS and key_rot_cw.elapsed % KEY_REPEAT_INTERVAL == 0:
+        if key_rot_cw.state == KeyState.HOLD and key_rot_cw.elapsed == 0:
             commands.append(RotateCwCommand())
 
         # 反時計回り回転
+        # NOTE: 連続入力防止のため、キーを話したタイミングに処理する
         key_rot_ccw = key_manager.get_key_input(HOT_KEY_MINO_ROTATE_CCW)
-        if key_rot_ccw.state == KeyState.PRESS and key_rot_ccw.elapsed % KEY_REPEAT_INTERVAL == 0:
+        if key_rot_ccw.state == KeyState.HOLD and key_rot_ccw.elapsed == 0:
             commands.append(RotateCcwCommand())
 
         # 左移動
@@ -62,8 +64,9 @@ class Game:
             commands.append(MoveRightCommand())
 
         # ハードドロップ
+        # NOTE: 連続入力防止のため、キーを話したタイミングに処理する
         key_hard_drop = key_manager.get_key_input(HOT_KEY_MINO_MOVE_HARD_DROP)
-        if key_hard_drop.state == KeyState.PRESS and key_hard_drop.elapsed % KEY_REPEAT_INTERVAL == 0:
+        if key_hard_drop.state == KeyState.HOLD and key_hard_drop.elapsed == 0:
             commands.append(MoveHardDropCommand())
 
         # ホールド
